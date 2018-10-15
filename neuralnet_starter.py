@@ -18,6 +18,7 @@ def softmax(x):
   """
   Write the code for softmax activation function that takes in a numpy array and returns a numpy array.
   """
+  output = []
   return output
 
 
