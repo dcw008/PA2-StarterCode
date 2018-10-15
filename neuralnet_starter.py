@@ -68,7 +68,6 @@ class Activation:
     """
     Write the code for sigmoid activation function that takes in a numpy array and returns a numpy array.
     """
-
     self.x = x
     return np.array([np.true_divide(1, np.add(1, np.exp(-e))) for e in x])
 
@@ -90,19 +89,19 @@ class Activation:
     """
     Write the code for gradient through sigmoid activation function that takes in a numpy array and returns a numpy array.
     """
-    return grad
+    return np.array([self.sigmoid(e) * (1 - self.sigmoid(e)) for e in self.x])
 
   def grad_tanh(self):
     """
     Write the code for gradient through tanh activation function that takes in a numpy array and returns a numpy array.
     """
-    return grad
+    return np.array([1 - np.power(self.tanh(e),2) for e in self.x])
 
   def grad_ReLU(self):
     """
     Write the code for gradient through ReLU activation function that takes in a numpy array and returns a numpy array.
     """
-    return grad
+    return np.array([((e > 0) * 1) for e in self.x])
 
 
 class Layer():
