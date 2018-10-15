@@ -27,7 +27,14 @@ def load_data(fname):
   Write code to read the data and return it as 2 numpy arrays.
   Make sure to convert labels to one hot encoded format.
   """
-  return images, labels
+  f = open(fname, 'rb')
+  data = pickle.load(f, encoding='bytes')
+  X = []
+  Y = []
+  for d in data:
+    X.append(d[:784])
+    Y.append(d[784])
+  return X, Y
 
 
 class Activation:
