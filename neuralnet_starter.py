@@ -34,7 +34,7 @@ def load_data(fname):
   for d in data:
     X.append(d[:784])
     Y.append(d[784])
-  return X, Y
+  return np.array(X), np.array(Y)
 
 
 class Activation:
@@ -68,22 +68,23 @@ class Activation:
     """
     Write the code for sigmoid activation function that takes in a numpy array and returns a numpy array.
     """
+
     self.x = x
-    return output
+    return np.array([np.true_divide(1, np.add(1, np.exp(-e))) for e in x])
 
   def tanh(self, x):
     """
     Write the code for tanh activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
-    return output
+    return np.array([np.tanh(e) for e in x])
 
   def ReLU(self, x):
     """
     Write the code for ReLU activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
-    return output
+    return np.array([max(0, e) for e in x])
 
   def grad_sigmoid(self):
     """
