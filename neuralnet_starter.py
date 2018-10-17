@@ -1,7 +1,6 @@
 import numpy as np
 import pickle
 
-
 config = {}
 config['layer_specs'] = [784, 100, 100, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
 config['activation'] = 'sigmoid' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
@@ -13,6 +12,7 @@ config['L2_penalty'] = 0  # Regularization constant
 config['momentum'] = False  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
 config['learning_rate'] = 0.0001 # Learning rate of gradient descent algorithm
+
 
 def softmax(x):
   """
@@ -29,6 +29,7 @@ def load_data(fname):
   """
   f = open(fname, 'rb')
   data = pickle.load(f, encoding='bytes')
+  f.close() 
   X = []
   Y = []
   for d in data:
@@ -120,6 +121,9 @@ class Layer():
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
     self.x = x
+    # Compute over all units in the layer. 
+    # Matrix multiply + bias (as in writeup)
+    self.a = np.add(np.matmul(self.w, x), self.b)
     return self.a
   
   def backward_pass(self, delta):
@@ -127,6 +131,14 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
+    #create activator object with config's activation function
+    activator = Activation(config['activation'])
+    #calculate the deltas for the current layer i.e. delta_i
+    curr_delta = activator.backward_pass(delta)
+    #gradient w.r.t w is curr_delta X input of current layer
+    self.d_w = curr_delta * self.x 
+
+    #TODO compute gradient w.r.t x and b
     return self.d_x
 
       
