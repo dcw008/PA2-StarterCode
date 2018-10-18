@@ -133,12 +133,15 @@ class Layer():
     """
     #create activator object with config's activation function
     activator = Activation(config['activation'])
+    activator.x = self.a
     #calculate the deltas for the current layer i.e. delta_i
-    curr_delta = activator.backward_pass(delta)
-    #gradient w.r.t w is curr_delta X input of current layer
+    curr_delta = activator.backward_pass(np.matmul(delta, self.w))
+    #gradient w.r.t w is curr_delta times input of current layer
     self.d_w = curr_delta * self.x 
-
-    #TODO compute gradient w.r.t x and b
+    #gradient w.r.t x is curr_delta times w
+    self.d_x = np.matmul(curr_delta,self.w)
+    #gradient w.r.t b is just constant 
+    #self.d_b = self.d_w 
     return self.d_x
 
       
