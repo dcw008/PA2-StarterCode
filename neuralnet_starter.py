@@ -162,6 +162,19 @@ class Neuralnetwork():
     If targets == None, loss should be None. If not, then return the loss computed.
     """
     self.x = x
+    i = 0
+    while i < len(self.layers):
+      #get the weighted sum for the layer
+      weighted_sum = layers[i].forward_pass(x)
+      i+=1
+      if i == len(self.layers): break
+      a_obj = layers[i]
+      #update input for next layer
+      self.x = a_obj.forward_pass(weighted_sum)
+      i+=1
+
+    self.y = softmax(np.matmul(self.x, layers[-1].w)) #TODO figure out which weights to use for output layer
+    self.loss_function(np.logits(ys), self.targets)
     return loss, self.y
 
   def loss_func(self, logits, targets):

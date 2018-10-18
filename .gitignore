@@ -6,4 +6,5 @@ neuralnet.py
 neuralnet.pyc
 tester.py
 data/
+*.swp
 
