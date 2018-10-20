@@ -138,17 +138,12 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
-    #create activator object with config's activation function
-    activator = Activation(config['activation'])
-    activator.x = self.a
-    #calculate the deltas for the current layer i.e. delta_i
-    curr_delta = activator.backward_pass(np.matmul(delta, self.w))
     #gradient w.r.t w is curr_delta times input of current layer
-    self.d_w = curr_delta * self.x
+    self.d_w = delta * self.x
     #gradient w.r.t x is curr_delta times w
-    self.d_x = np.matmul(curr_delta, self.w)
+    self.d_x = np.matmul(delta, self.w) 
     #gradient w.r.t b is alpha times detla
-    self.d_b = curr_delta
+    self.d_b = delta
 
     return self.d_x
 
@@ -184,7 +179,8 @@ class Neuralnetwork():
       i+=1
 
     self.y = softmax(weighted_sums) # N * 10
-    loss = self.loss_func(self.y, self.targets)
+
+    loss = None if not targets else self.loss_func(self.y, self.targets)
     return loss, self.y
 
 
@@ -202,6 +198,14 @@ class Neuralnetwork():
     implement the backward pass for the whole network. 
     hint - use previously built functions.
     '''
+    curr_delta = np.subtract(self.t, self.y)
+    for i in range(len(self.layers) - 1, 0, -1):
+      layer = self.layears[i]
+      act_obj = self.layers[i-1]
+      d_x = layer.back_pass(curr_delta)
+      act_grad = act_obj.back_pass(delta) #TODO gives g'(a) * delta?? y tho.
+      curr_delta = np.multiply(d_x, act_grad)
+
     #learning rate
     alpha = config['learning_rate']
     #simultaneous update of weights and biases after training on all examples
@@ -216,11 +220,21 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   Write the code to train the network. Use values from config to set parameters
   such as L2 penalty, number of epochs, momentum, etc.
   """
+  batch_size = config['batch_size']
+  train_size = len(X_train)
+  epoch_count = config['epoch']
 
+  nn = Neuralnetwork(config)
 
-
-
-
+  loss = None
+  outputs = None
+  for epoch in epoch_count:
+    #iterate through each batch size
+    for i in range(0, train_size, batch_size):
+      #forward pass
+      loss, outputs = nn.forward_pass(X_train[i:batch_size], y_train[i:batch_size])
+      #back pass and update weights and biases
+      nn.backward_pass() 
   
 def test(model, X_test, y_test, config):
   """
