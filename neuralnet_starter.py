@@ -108,8 +108,11 @@ class Activation:
 class Layer():
   def __init__(self, in_units, out_units):
     np.random.seed(42)
-    self.w = np.random.randn(in_units, out_units)  # Weight matrix
-    self.b = np.zeros((1, out_units)).astype(np.float32)  # Bias
+    self.in_units = in_units
+    self.out_units = out_units
+    #since we are passing in entire batches, we will initialize in forward pass
+    self.w = None
+    self.b = None
     self.x = None  # Save the input to forward_pass in this
     self.a = None  # Save the output of forward pass in this (without activation)
     self.d_x = None  # Save the gradient w.r.t x in this
@@ -121,9 +124,13 @@ class Layer():
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
     self.x = x
+    sampleSize = len(self.x)
+    # Weight matrix. weights for all data inputs in the batch
+    self.w = [np.random.randn(self.in_units, self.out_units) for i in range(sampleSize)]  
+    # bias matrix for all data inputs
+    self.b = np.zeros(sampleSize, self.out_units).astype(np.float32)  
     # Compute over all units in the layer. 
-    # Matrix multiply + bias (as in writeup)
-    self.a = np.add(np.matmul(self.w, x), self.b)
+    self.a = np.add(np.matmul(self.w, x), self.b) # Matrix multiply + bias (as in writeup)
     return self.a
   
   def backward_pass(self, delta):
@@ -137,11 +144,12 @@ class Layer():
     #calculate the deltas for the current layer i.e. delta_i
     curr_delta = activator.backward_pass(np.matmul(delta, self.w))
     #gradient w.r.t w is curr_delta times input of current layer
-    self.d_w = curr_delta * self.x 
+    self.d_w = curr_delta * self.x
     #gradient w.r.t x is curr_delta times w
-    self.d_x = np.matmul(curr_delta,self.w)
-    #gradient w.r.t b is just constant 
-    #self.d_b = self.d_w 
+    self.d_x = np.matmul(curr_delta, self.w)
+    #gradient w.r.t b is alpha times detla
+    self.d_b = curr_delta
+
     return self.d_x
 
       
@@ -152,7 +160,7 @@ class Neuralnetwork():
     self.y = None  # Save the output vector of model in this
     self.targets = None  # Save the targets in forward_pass in this variable
     for i in range(len(config['layer_specs']) - 1):
-      self.layers.append( Layer(config['layer_specs'][i], config['layer_specs'][i+1]) )
+      self.layers.append( Layer(config['layer_specs'][i], config['layer_specs'][i+1]))
       if i < len(config['layer_specs']) - 2:
         self.layers.append(Activation(config['activation']))  
     
@@ -161,33 +169,46 @@ class Neuralnetwork():
     Write the code for forward pass through all layers of the model and return loss and predictions.
     If targets == None, loss should be None. If not, then return the loss computed.
     """
-    self.x = x
+    self.x = x # x contains all the samples in the batch, N * 784
+    size = len(self.layers)
+    weighted_sums = None
     i = 0
-    while i < len(self.layers):
-      #get the weighted sum for the layer
-      weighted_sum = layers[i].forward_pass(x)
+    while i < size:
+      # this should result with an arary of weighted_sum of this layer
+      weighted_sums = self.layers[i].forward_pass(self.x)     
       i+=1
-      if i == len(self.layers): break
-      a_obj = layers[i]
+      if i == size: break
+      a_obj = self.layers[i]
       #update input for next layer
-      self.x = a_obj.forward_pass(weighted_sum)
+      self.x = a_obj.forward_pass(weighted_sums)
       i+=1
 
-    self.y = softmax(np.matmul(self.x, layers[-1].w)) #TODO figure out which weights to use for output layer
-    self.loss_function(np.logits(ys), self.targets)
+    self.y = softmax(weighted_sums) # N * 10
+    loss = self.loss_func(self.y, self.targets)
     return loss, self.y
 
+
+  # calculate the total of loss, then I
+  # targets are an array that contains tha target for all the samples, and each target is one-hot encoding format
   def loss_func(self, logits, targets):
     '''
     find cross entropy loss between logits and targets
     '''
-    return output
+
+    return sum(np.matmul(targets, np.log(logits)))
     
   def backward_pass(self):
     '''
     implement the backward pass for the whole network. 
     hint - use previously built functions.
     '''
+    #learning rate
+    alpha = config['learning_rate']
+    #simultaneous update of weights and biases after training on all examples
+    for layer in self.layers:
+      if isisntance(layer, Layer): 
+        layer.w += layer.w + (np.multiply(alpha, layer.d_w))
+        layer.b += layer.b + (np.multiply(alpha, layer.d_b))
       
 
 def trainer(model, X_train, y_train, X_valid, y_valid, config):
@@ -195,7 +216,11 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   Write the code to train the network. Use values from config to set parameters
   such as L2 penalty, number of epochs, momentum, etc.
   """
-  
+
+
+
+
+
   
 def test(model, X_test, y_test, config):
   """
