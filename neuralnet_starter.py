@@ -82,12 +82,19 @@ class Activation:
     return np.tanh(x) 
     #return np.array([np.tanh(e) for e in x])
 
+
+  def ReLuTmp(self, e):
+    return max(0, e)
+
+
   def ReLU(self, x):
     """
     Write the code for ReLU activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
-    return np.array([max(0, e) for e in x])
+    rVec = np.vectorize(self.ReLuTmp)
+
+    return np.array([rVec(e) for e in x])
 
   def grad_sigmoid(self):
     """
@@ -131,9 +138,9 @@ class Layer():
     # Weight matrix. weights for all data inputs in the batch
     self.w = [np.random.randn(self.in_units, self.out_units) for i in range(sampleSize)]  
     # bias matrix for all data inputs
-    self.b = np.zeros(sampleSize, self.out_units).astype(np.float32)  
+    self.b = np.zeros((sampleSize, self.out_units)).astype(np.float32)
     # Compute over all units in the layer. 
-    self.a = np.add(np.matmul(self.w, x), self.b) # Matrix multiply + bias (as in writeup)
+    self.a = np.add([np.matmul(e1, e2) for e1, e2 in zip(self.x, self.w)]  , self.b) # Matrix multiply + bias (as in writeup)
     return self.a
   
   def backward_pass(self, delta):
@@ -141,10 +148,18 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
+    reshaped_x = np.reshape(self.x, (len(self.x),1,len(self.x[0])))
+    print('shape: ', delta.shape)
+    reshaped_delta = np.reshape(delta, (len(self.x), 1, len(delta[0])))
     #gradient w.r.t w is curr_delta times input of current layer
-    self.d_w = delta * self.x
+
+    self.d_w = [np.matmul(np.transpose(x), d) for x, d in zip(reshaped_x, reshaped_delta)]
+
     #gradient w.r.t x is curr_delta times w
-    self.d_x = np.matmul(delta, self.w) 
+    # reshaped_delta = np.reshape(delta, (len(self.w), 1, len(delta[0])))
+    self.d_x = [np.matmul(w, np.transpose(d)) for w, d in zip(self.w, reshaped_delta)]
+    print(';askdfj;alsdkfj')
+    # self.d_x = [np.matmul(np.reshape(w,(len(w),1)), np.reshape(d,(1,len(d)))) for w, d in zip(self.w, delta)]
     #gradient w.r.t b is alpha times detla
     self.d_b = delta
 
@@ -168,6 +183,9 @@ class Neuralnetwork():
     If targets == None, loss should be None. If not, then return the loss computed.
     """
     self.x = x # x contains all the samples in the batch, N * 784
+    self.targets = [targets]
+
+
     size = len(self.layers)
     weighted_sums = None
     i = 0
@@ -180,10 +198,9 @@ class Neuralnetwork():
       #update input for next layer
       self.x = a_obj.forward_pass(weighted_sums)
       i+=1
-
     self.y = softmax(weighted_sums) # N * 10
 
-    loss = None if not targets else self.loss_func(self.y, self.targets)
+    loss = None if targets is None else self.loss_func(self.y, self.targets)
     return loss, self.y
 
 
@@ -193,22 +210,21 @@ class Neuralnetwork():
     '''
     find cross entropy loss between logits and targets
     '''
-
-    return sum(np.matmul(targets, np.log(logits)))
-    
+    # return sum(np.matmul(targets, np.log(logits)))
+    return [np.sum(np.matmul(t, np.log(l))) for l,t in zip(logits, targets)]
   def backward_pass(self):
     '''
     implement the backward pass for the whole network. 
     hint - use previously built functions.
     '''
     #calculate delta for the output layer
-    curr_delta = np.subtract(self.t, self.y)
+    curr_delta = np.subtract(self.targets, self.y)
     #backprop from outter hidden layer
     for i in range(len(self.layers) - 1, 0, -1):
-      layer = self.layears[i]
+      layer = self.layers[i]
       act_obj = self.layers[i-1]
-      d_x = layer.back_pass(curr_delta) #gives the summation part of the equation
-      curr_delta = act_obj.back_pass(d_x) #gives gradient multiplied with d_x
+      d_x = layer.backward_pass(curr_delta) #gives the summation part of the equation
+      curr_delta = act_obj.backward_pass(d_x) #gives gradient multiplied with d_x
 
     #learning rate
     alpha = config['learning_rate']

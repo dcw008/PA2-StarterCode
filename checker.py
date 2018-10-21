@@ -39,25 +39,26 @@ def main():
     check_error(err_tanh, "Tanh Forward Pass")
 
     out_ReLU = act_ReLU.forward_pass(x)
-    err_ReLU = np.sum(np.abs(benchmark_data['out_ReLU'] - out_ReLU))
+    err_ReLU = np.sum(np.abs(benchmark_data['out_ReLU'.encode()] - out_ReLU))
     check_error(err_ReLU, "ReLU Forward Pass")
 
     print("**************")
 
     grad_sigmoid = act_sigmoid.backward_pass(1.0)
-    err_sigmoid_grad = np.sum(np.abs(benchmark_data['grad_sigmoid'] - grad_sigmoid))
+    err_sigmoid_grad = np.sum(np.abs(benchmark_data['grad_sigmoid'.encode()] - grad_sigmoid))
     check_error(err_sigmoid_grad, "Sigmoid Gradient")
 
     grad_tanh = act_tanh.backward_pass(1.0)
-    err_tanh_grad = np.sum(np.abs(benchmark_data['grad_tanh'] - grad_tanh))
+    err_tanh_grad = np.sum(np.abs(benchmark_data['grad_tanh'.encode()] - grad_tanh))
     check_error(err_tanh_grad, "Tanh Gradient")
 
     grad_ReLU = act_ReLU.backward_pass(1.0)
-    err_ReLU_grad = np.sum(np.abs(benchmark_data['grad_ReLU'] - grad_ReLU))
+    err_ReLU_grad = np.sum(np.abs(benchmark_data['grad_ReLU'.encode()] - grad_ReLU))
     check_error(err_ReLU_grad, "ReLU Gradient")
     
     np.random.seed(42)
     x_image = np.random.randn(1, 784)
+    # print('x_image: ', x_image)
 
     nnet = neuralnet.Neuralnetwork(config)
     nnet.forward_pass(x_image, targets = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
