@@ -198,13 +198,14 @@ class Neuralnetwork():
     implement the backward pass for the whole network. 
     hint - use previously built functions.
     '''
+    #calculate delta for the output layer
     curr_delta = np.subtract(self.t, self.y)
+    #backprop from outter hidden layer
     for i in range(len(self.layers) - 1, 0, -1):
       layer = self.layears[i]
       act_obj = self.layers[i-1]
-      d_x = layer.back_pass(curr_delta)
-      act_grad = act_obj.back_pass(delta) #TODO gives g'(a) * delta?? y tho.
-      curr_delta = np.multiply(d_x, act_grad)
+      d_x = layer.back_pass(curr_delta) #gives the summation part of the equation
+      curr_delta = act_obj.back_pass(d_x) #gives gradient multiplied with d_x
 
     #learning rate
     alpha = config['learning_rate']
@@ -220,28 +221,42 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   Write the code to train the network. Use values from config to set parameters
   such as L2 penalty, number of epochs, momentum, etc.
   """
+  #assuming that the model is the neural network
   batch_size = config['batch_size']
   train_size = len(X_train)
   epoch_count = config['epoch']
 
-  nn = Neuralnetwork(config)
 
   loss = None
   outputs = None
+  #train over epochs
   for epoch in epoch_count:
     #iterate through each batch size
     for i in range(0, train_size, batch_size):
       #forward pass
-      loss, outputs = nn.forward_pass(X_train[i:batch_size], y_train[i:batch_size])
+      loss, outputs = model.forward_pass(X_train[i:batch_size], y_train[i:batch_size])
       #back pass and update weights and biases
-      nn.backward_pass() 
+      model.backward_pass() 
+
+  #since model is passed by reference, don't need to return
+  return model #optional
   
 def test(model, X_test, y_test, config):
   """
   Write code to run the model on the data passed as input and return accuracy.
   """
+  #assuming that model is the nn. forward pass to build the network with weights
+  loss, outputs = model.forward_pass(X_test, y_test) #can directly pass all the inputs into forward pass
+  predictions = predict(outputs)  #TODO complete predictions
   return accuracy
+
       
+#TODO: make predictions from the probability distribution from the neural network
+def predict(probabilities):
+  #TODO: build the one-hot-encoding
+  np.zeros(len(probabilities), 10)
+
+
 
 if __name__ == "__main__":
   train_data_fname = 'MNIST_train.pkl'
