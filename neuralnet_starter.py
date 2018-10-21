@@ -51,7 +51,7 @@ class Activation:
       return self.tanh(a)
     
     elif self.activation_type == "ReLU":
-      return self.relu(a)
+      return self.ReLU(a)
   
   def backward_pass(self, delta):
     if self.activation_type == "sigmoid":
@@ -70,14 +70,17 @@ class Activation:
     Write the code for sigmoid activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
-    return np.array([np.true_divide(1, np.add(1, np.exp(-e))) for e in x])
+    return np.true_divide(1, np.add(1, np.exp(-x)))
+    #return np.array([np.true_divide(1, np.add(1, np.exp(-e))) for e in x])
 
   def tanh(self, x):
     """
     Write the code for tanh activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
-    return np.array([np.tanh(e) for e in x])
+    #print(x)
+    return np.tanh(x) 
+    #return np.array([np.tanh(e) for e in x])
 
   def ReLU(self, x):
     """
@@ -248,13 +251,25 @@ def test(model, X_test, y_test, config):
   #assuming that model is the nn. forward pass to build the network with weights
   loss, outputs = model.forward_pass(X_test, y_test) #can directly pass all the inputs into forward pass
   predictions = predict(outputs)  #TODO complete predictions
+  count = 0
+  for y,p in zip(y_test,predictions):
+    if y == p: count += 1
+  accuracy = count / len(predictions)
+  #print('accuracy: ', accuracy)
   return accuracy
 
       
-#TODO: make predictions from the probability distribution from the neural network
+#make predictions from the probability distribution from the neural network
 def predict(probabilities):
-  #TODO: build the one-hot-encoding
-  np.zeros(len(probabilities), 10)
+  predictions = np.zeros(len(probabilities), 10)
+  for i, p_list in enumerate(probabilities):
+    max_index = p_list.index(max(p_list))
+    predictions[i][max_index] = 1
+  return predictions
+
+    
+
+
 
 
 

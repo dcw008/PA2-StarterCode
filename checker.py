@@ -4,8 +4,13 @@ import pickle
 
 def main():
     # make_pickle()
-    benchmark_data = pickle.load(open('validate_data.pkl'))
+    #f = open('validate_data.pkl', 'r')
+    #benchmark_data = pickle.load(f, encoding='utf-8')
+    #print(benchmark_data.keys())
+    #f.close() 
+    benchmark_data = pickle.load(open('validate_data.pkl', 'rb'),encoding='bytes')
 
+    print(benchmark_data.keys())
     config = {}
     config['layer_specs'] = [784, 100, 100, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
     config['activation'] = 'sigmoid' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
@@ -25,18 +30,19 @@ def main():
     
     
     out_sigmoid = act_sigmoid.forward_pass(x)
-    err_sigmoid = np.sum(np.abs(benchmark_data['out_sigmoid'] - out_sigmoid))
+    print(benchmark_data.keys())
+    err_sigmoid = np.sum(np.abs(benchmark_data['out_sigmoid'.encode()] - out_sigmoid))
     check_error(err_sigmoid, "Sigmoid Forward Pass")
 
     out_tanh = act_tanh.forward_pass(x)
-    err_tanh = np.sum(np.abs(benchmark_data['out_tanh'] - out_tanh))
+    err_tanh = np.sum(np.abs(benchmark_data['out_tanh'.encode()] - out_tanh))
     check_error(err_tanh, "Tanh Forward Pass")
 
     out_ReLU = act_ReLU.forward_pass(x)
     err_ReLU = np.sum(np.abs(benchmark_data['out_ReLU'] - out_ReLU))
     check_error(err_ReLU, "ReLU Forward Pass")
 
-    print "**************"
+    print("**************")
 
     grad_sigmoid = act_sigmoid.backward_pass(1.0)
     err_sigmoid_grad = np.sum(np.abs(benchmark_data['grad_sigmoid'] - grad_sigmoid))
