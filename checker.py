@@ -1,16 +1,11 @@
-import neuralnet_starter as neuralnet
+import neuralnet
 import numpy as np
 import pickle
 
 def main():
     # make_pickle()
-    #f = open('validate_data.pkl', 'r')
-    #benchmark_data = pickle.load(f, encoding='utf-8')
-    #print(benchmark_data.keys())
-    #f.close() 
-    benchmark_data = pickle.load(open('validate_data.pkl', 'rb'),encoding='bytes')
+    benchmark_data = pickle.load(open('validate_data.pkl', 'rb'), encoding='latin1')
 
-    print(benchmark_data.keys())
     config = {}
     config['layer_specs'] = [784, 100, 100, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
     config['activation'] = 'sigmoid' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
@@ -30,45 +25,45 @@ def main():
     
     
     out_sigmoid = act_sigmoid.forward_pass(x)
-    print(benchmark_data.keys())
-    err_sigmoid = np.sum(np.abs(benchmark_data['out_sigmoid'.encode()] - out_sigmoid))
+    err_sigmoid = np.sum(np.abs(benchmark_data['out_sigmoid'] - out_sigmoid))
     check_error(err_sigmoid, "Sigmoid Forward Pass")
 
     out_tanh = act_tanh.forward_pass(x)
-    err_tanh = np.sum(np.abs(benchmark_data['out_tanh'.encode()] - out_tanh))
+    err_tanh = np.sum(np.abs(benchmark_data['out_tanh'] - out_tanh))
     check_error(err_tanh, "Tanh Forward Pass")
 
     out_ReLU = act_ReLU.forward_pass(x)
-    err_ReLU = np.sum(np.abs(benchmark_data['out_ReLU'.encode()] - out_ReLU))
+    err_ReLU = np.sum(np.abs(benchmark_data['out_ReLU'] - out_ReLU))
     check_error(err_ReLU, "ReLU Forward Pass")
 
     print("**************")
 
     grad_sigmoid = act_sigmoid.backward_pass(1.0)
-    err_sigmoid_grad = np.sum(np.abs(benchmark_data['grad_sigmoid'.encode()] - grad_sigmoid))
+    err_sigmoid_grad = np.sum(np.abs(benchmark_data['grad_sigmoid'] - grad_sigmoid))
     check_error(err_sigmoid_grad, "Sigmoid Gradient")
 
     grad_tanh = act_tanh.backward_pass(1.0)
-    err_tanh_grad = np.sum(np.abs(benchmark_data['grad_tanh'.encode()] - grad_tanh))
+    err_tanh_grad = np.sum(np.abs(benchmark_data['grad_tanh'] - grad_tanh))
     check_error(err_tanh_grad, "Tanh Gradient")
 
     grad_ReLU = act_ReLU.backward_pass(1.0)
-    err_ReLU_grad = np.sum(np.abs(benchmark_data['grad_ReLU'.encode()] - grad_ReLU))
+    err_ReLU_grad = np.sum(np.abs(benchmark_data['grad_ReLU'] - grad_ReLU))
     check_error(err_ReLU_grad, "ReLU Gradient")
     
     np.random.seed(42)
     x_image = np.random.randn(1, 784)
-    # print('x_image: ', x_image)
 
     nnet = neuralnet.Neuralnetwork(config)
-    nnet.forward_pass(x_image, targets = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+    nnet.forward_pass(x_image, targets = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0]]))
     nnet.backward_pass()
 
+    # nnet.y = benchmark_data['nnet'].y
     layer_no = 0
     for layer_idx, layer in enumerate(nnet.layers):
         if isinstance(layer, neuralnet.Layer):
             layer_no += 1
             error_x = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].x - layer.x))
+            print(error_x)
             error_w = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].w - layer.w))
             error_b = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].b - layer.b))
             error_d_w = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].d_w - layer.d_w))

@@ -133,6 +133,7 @@ class Layer():
     """
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
+    print('foward pass!')
     self.x = x # N * 784
     # Weight matrix. weights for all data inputs in the batch
     self.w = np.random.randn(self.in_units, self.out_units)
@@ -189,7 +190,6 @@ class Neuralnetwork():
         break
       a_obj = self.layers[i]
       #update input for next layer
-      print('impressive')
       self.x = a_obj.forward_pass(weighted_sums) # N * output_unit
       i+=1
 
@@ -231,7 +231,7 @@ class Neuralnetwork():
     alpha = config['learning_rate']
     #simultaneous update of weights and biases after training on all examples
     for layer in self.layers:
-      if isinstance(layer, Layer):
+      if isisntance(layer, Layer): 
         layer.w += layer.w + (np.multiply(alpha, layer.d_w))
         layer.b += layer.b + (np.multiply(alpha, layer.d_b))
       
