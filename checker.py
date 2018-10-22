@@ -63,9 +63,12 @@ def main():
         if isinstance(layer, neuralnet.Layer):
             layer_no += 1
             error_x = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].x - layer.x))
-            print(error_x)
             error_w = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].w - layer.w))
+            print(error_w)
+            # print('correct w: ', benchmark_data['nnet'].layers[layer_idx].w[-1])
+            # print('impressive w: ', layer.w[len(layer.w)-1])
             error_b = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].b - layer.b))
+            print(error_b)
             error_d_w = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].d_w - layer.d_w))
             error_d_b = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].d_b - layer.d_b))
 
