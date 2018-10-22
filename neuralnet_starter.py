@@ -71,19 +71,16 @@ class Activation:
     """
     self.x = x
     return np.true_divide(1, np.add(1, np.exp(-x)))
-    #return np.array([np.true_divide(1, np.add(1, np.exp(-e))) for e in x])
 
   def tanh(self, x):
     """
     Write the code for tanh activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
-    #print(x)
-    return np.tanh(x) 
-    #return np.array([np.tanh(e) for e in x])
+    return np.tanh(x)
 
 
-  def ReLuTmp(self, e):
+  def ReLu_v(self, e):
     return max(0, e)
 
 
@@ -92,28 +89,31 @@ class Activation:
     Write the code for ReLU activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
-    rVec = np.vectorize(self.ReLuTmp)
-
-    return np.array([rVec(e) for e in x])
+    rVec = np.vectorize(self.ReLu_v)
+    return rVec(self.x)
 
   def grad_sigmoid(self):
     """
     Write the code for gradient through sigmoid activation function that takes in a numpy array and returns a numpy array.
     """
-    return np.array([self.sigmoid(e) * (1 - self.sigmoid(e)) for e in self.x])
+    return self.sigmoid(self.x) * (1 - self.sigmoid(self.x))
 
   def grad_tanh(self):
     """
     Write the code for gradient through tanh activation function that takes in a numpy array and returns a numpy array.
     """
-    return np.array([1 - np.power(self.tanh(e),2) for e in self.x])
+    return 1 - np.power(self.tanh(self.x),2)
+
+
+  def grad_ReLU_v(self, e):
+    return (e > 0) * 1
 
   def grad_ReLU(self):
     """
     Write the code for gradient through ReLU activation function that takes in a numpy array and returns a numpy array.
     """
-    return np.array([((e > 0) * 1) for e in self.x])
-
+    rgVec = np.vectorize(self.grad_ReLU_v)
+    return rgVec(self.x)
 
 class Layer():
   def __init__(self, in_units, out_units):
@@ -133,14 +133,14 @@ class Layer():
     """
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
-    self.x = x
-    sampleSize = len(self.x)
+    self.x = x # N * 784
     # Weight matrix. weights for all data inputs in the batch
-    self.w = [np.random.randn(self.in_units, self.out_units) for i in range(sampleSize)]  
+    self.w = np.random.randn(self.in_units, self.out_units)
     # bias matrix for all data inputs
-    self.b = np.zeros((sampleSize, self.out_units)).astype(np.float32)
-    # Compute over all units in the layer. 
-    self.a = np.add([np.matmul(e1, e2) for e1, e2 in zip(self.x, self.w)]  , self.b) # Matrix multiply + bias (as in writeup)
+    self.b = np.zeros((1, self.out_units)).astype(np.float32)
+    # Compute over all units in the layer.
+
+    self.a = np.add(np.dot(self.x, self.w), self.b)
     return self.a
   
   def backward_pass(self, delta):
@@ -149,7 +149,6 @@ class Layer():
     computes gradient for its weights and the delta to pass to its previous layers.
     """
     reshaped_x = np.reshape(self.x, (len(self.x),1,len(self.x[0])))
-    print('shape: ', delta.shape)
     reshaped_delta = np.reshape(delta, (len(self.x), 1, len(delta[0])))
     #gradient w.r.t w is curr_delta times input of current layer
 
@@ -158,14 +157,13 @@ class Layer():
     #gradient w.r.t x is curr_delta times w
     # reshaped_delta = np.reshape(delta, (len(self.w), 1, len(delta[0])))
     self.d_x = [np.matmul(w, np.transpose(d)) for w, d in zip(self.w, reshaped_delta)]
-    print(';askdfj;alsdkfj')
     # self.d_x = [np.matmul(np.reshape(w,(len(w),1)), np.reshape(d,(1,len(d)))) for w, d in zip(self.w, delta)]
     #gradient w.r.t b is alpha times detla
     self.d_b = delta
 
     return self.d_x
 
-      
+
 class Neuralnetwork():
   def __init__(self, config):
     self.layers = []
@@ -178,27 +176,36 @@ class Neuralnetwork():
         self.layers.append(Activation(config['activation']))  
     
   def forward_pass(self, x, targets=None):
+
+
     """
     Write the code for forward pass through all layers of the model and return loss and predictions.
     If targets == None, loss should be None. If not, then return the loss computed.
     """
     self.x = x # x contains all the samples in the batch, N * 784
-    self.targets = [targets]
+    self.targets = targets # targets is a matrix N * 10
 
-
+    print(self.targets.shape)
     size = len(self.layers)
     weighted_sums = None
     i = 0
     while i < size:
       # this should result with an arary of weighted_sum of this layer
-      weighted_sums = self.layers[i].forward_pass(self.x)     
+      weighted_sums = self.layers[i].forward_pass(self.x)  # N * output_unit
       i+=1
-      if i == size: break
+      if i == size:
+        break
       a_obj = self.layers[i]
       #update input for next layer
-      self.x = a_obj.forward_pass(weighted_sums)
+      self.x = a_obj.forward_pass(weighted_sums) # N * output_unit
       i+=1
+
+
+    print(np.array(weighted_sums).shape)
+
     self.y = softmax(weighted_sums) # N * 10
+    # print(self.y.shape)
+    # print(self.targets.shape)
 
     loss = None if targets is None else self.loss_func(self.y, self.targets)
     return loss, self.y
@@ -212,6 +219,8 @@ class Neuralnetwork():
     '''
     # return sum(np.matmul(targets, np.log(logits)))
     return [np.sum(np.matmul(t, np.log(l))) for l,t in zip(logits, targets)]
+
+
   def backward_pass(self):
     '''
     implement the backward pass for the whole network. 
@@ -282,10 +291,6 @@ def predict(probabilities):
     max_index = p_list.index(max(p_list))
     predictions[i][max_index] = 1
   return predictions
-
-    
-
-
 
 
 

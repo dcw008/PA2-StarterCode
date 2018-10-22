@@ -7,10 +7,9 @@ def main():
     #f = open('validate_data.pkl', 'r')
     #benchmark_data = pickle.load(f, encoding='utf-8')
     #print(benchmark_data.keys())
-    #f.close() 
+    #f.close()
     benchmark_data = pickle.load(open('validate_data.pkl', 'rb'),encoding='bytes')
 
-    print(benchmark_data.keys())
     config = {}
     config['layer_specs'] = [784, 100, 100, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
     config['activation'] = 'sigmoid' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
@@ -30,7 +29,6 @@ def main():
     
     
     out_sigmoid = act_sigmoid.forward_pass(x)
-    print(benchmark_data.keys())
     err_sigmoid = np.sum(np.abs(benchmark_data['out_sigmoid'.encode()] - out_sigmoid))
     check_error(err_sigmoid, "Sigmoid Forward Pass")
 
@@ -61,7 +59,7 @@ def main():
     # print('x_image: ', x_image)
 
     nnet = neuralnet.Neuralnetwork(config)
-    nnet.forward_pass(x_image, targets = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+    nnet.forward_pass(x_image, targets = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0]]))
     nnet.backward_pass()
 
     layer_no = 0
