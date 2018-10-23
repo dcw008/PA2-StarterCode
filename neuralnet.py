@@ -1,6 +1,6 @@
 import numpy as np
 import pickle
-
+import time
 config = {}
 config['layer_specs'] = [784, 50, 50, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
 config['activation'] = 'sigmoid' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
@@ -9,7 +9,7 @@ config['epochs'] = 50  # Number of epochs to train the model
 config['early_stop'] = True  # Implement early stopping or not
 config['early_stop_epoch'] = 5  # Number of epochs for which validation loss increases to be counted as overfitting
 config['L2_penalty'] = 0  # Regularization constant
-config['momentum'] = False  # Denotes if momentum is to be applied or not
+config['momentum'] = True  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
 config['learning_rate'] = 0.0001 # Learning rate of gradient descent algorithm
 # config['learning_rate'] = 0.000000001 # Learning rate of gradient descent algorithm
@@ -19,8 +19,8 @@ def softmax(x):
   """
   Write the code for softmax activation function that takes in a numpy array and returns a numpy array.
   """
-  total = np.sum(np.exp(x))
-  return np.true_divide(np.exp(x), total)
+  total = np.sum(np.exp(x), axis=1)
+  return np.asarray([np.true_divide(np.exp(e), t) for e,t in zip(x,total)]) #TODO  vectorize this
 
 
 def load_data(fname):
@@ -129,6 +129,10 @@ class Layer():
     self.d_b = None  # Save the gradient w.r.t b in this
     self.w = np.random.randn(self.in_units, self.out_units)
     self.b = np.zeros((1, self.out_units)).astype(np.float32)
+    #below are used for momentum
+    if config['momentum']:
+      self.v_dw = np.zeros((self.in_units, self.out_units))
+      self.v_db = np.zeros((1, self.out_units))
 
   def forward_pass(self, x):
     """
@@ -150,6 +154,13 @@ class Layer():
     self.d_x = np.dot(delta, np.transpose(self.w))
     #gradient w.r.t b is alpha times delta
     self.d_b = np.sum(delta, axis=0) #sum over deltas to get the right dimension
+    if config['momentum']:
+      beta = config['momentum_gamma']
+      one_minus_beta = np.subtract(1, beta)
+      #v_dw = B * v_dw + (1-B)*d_w
+      self.v_dw = np.add(np.multiply(beta, self.v_dw), np.multiply(one_minus_beta, self.d_w))
+      #v_db = B * v_db + (1-B)*d_b
+      self.v_db = np.add(np.multiply(beta, self.v_db), np.multiply(one_minus_beta, self.d_b))
 
     return self.d_x
 
@@ -166,15 +177,12 @@ class Neuralnetwork():
         self.layers.append(Activation(config['activation']))  
     
   def forward_pass(self, x, targets=None):
-
-
     """
     Write the code for forward pass through all layers of the model and return loss and predictions.
     If targets == None, loss should be None. If not, then return the loss computed.
     """
     self.x = x # x contains all the samples in the batch, N * 784
     self.targets = targets # targets is a matrix N * 10
-
     size = len(self.layers)
     weighted_sums = None
     i = 0
@@ -202,6 +210,8 @@ class Neuralnetwork():
     '''
     find cross entropy loss between logits and targets
     '''
+    # print('logits: ', logits.shape)
+    # print('targets: ', targets.shape)
     return np.sum(np.dot(np.log(logits), np.transpose(targets)))
 
 
@@ -239,44 +249,53 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   epoch_count = config['epochs']
   alpha = config['learning_rate']
 
+
   #train over epochs
   for i in range(epoch_count):
     #iterate through each batch size
     for j in range(0, train_size, batch_size):
       #forward pass
-      loss, outputs = model.forward_pass(X_train[j:batch_size], y_train[j:batch_size])
+      loss, outputs = model.forward_pass(X_train[j:j+batch_size], y_train[j:j+batch_size])
       #back pass
       model.backward_pass()
-      #simultaneous update of weights and biases after training on all examples
-      for k,layer in enumerate(model.layers):
+      #stochastic gradient descent: simultaneous update of weights and biases after training on all examples
+      for layer in model.layers:
         if isinstance(layer, Layer):
-          model.layers[k].w = np.add(np.multiply(alpha, layer.d_w), layer.w)
-          layer.b = np.add(layer.b,np.multiply(alpha,layer.d_b))
+          #TODO update weights using momentum
+          if config['momentum']:
+            layer.w = np.add(layer.w, np.multiply(alpha, layer.v_dw))
+            layer.b = np.add(layer.b, np.multiply(alpha, layer.v_db))
+          else:
+            # without momentum
+            layer.w = np.add(np.multiply(alpha, layer.d_w), layer.w)
+            layer.b = np.add(layer.b,np.multiply(alpha,layer.d_b))
 
-  #since model is passed by reference, don't need to return
-  return model #optional
-  
+
+
 def test(model, X_test, y_test, config):
   """
   Write code to run the model on the data passed as input and return accuracy.
   """
+  y_test = getOneHot(y_test)
   #assuming that model is the nn. forward pass to build the network with weights
   loss, outputs = model.forward_pass(X_test, y_test) #can directly pass all the inputs into forward pass
-  predictions = predict(outputs)  #TODO complete predictions
+  predictions = predict(outputs)
   count = 0
   for y,p in zip(y_test,predictions):
-    if y == p: count += 1
+    if np.array_equal(y,p): count += 1
   accuracy = count / len(predictions)
+  print(accuracy)
   return accuracy
 
       
 #make predictions from the probability distribution from the neural network
 def predict(probabilities):
-  predictions = np.zeros(len(probabilities), 10)
-  for i, p_list in enumerate(probabilities):
-    max_index = p_list.index(max(p_list))
-    predictions[i][max_index] = 1
+  predictions = np.zeros((len(probabilities), 10))
+  indices = np.argmax(probabilities, axis=1)
+  for i, p in zip(indices, predictions):
+    p[i] = 1
   return predictions
+
 
 
 
@@ -286,11 +305,24 @@ if __name__ == "__main__":
   test_data_fname = 'MNIST_test.pkl'
   
   ### Train the network ###
+  config['momentum'] = False
   model = Neuralnetwork(config)
   X_train, y_train = load_data(train_data_fname)
 
   X_valid, y_valid = load_data(valid_data_fname)
   X_test, y_test = load_data(test_data_fname)
+  start = time.time()
   trainer(model, X_train, y_train, X_valid, y_valid, config)
+  end = time.time()
+  print('without momentum time: ', (end-start))
+  test_acc = test(model, X_test, y_test, config)
+
+  ### Train the network ###
+  config['momentum'] = True
+  model = Neuralnetwork(config)
+  start = time.time()
+  trainer(model, X_train, y_train, X_valid, y_valid, config)
+  end = time.time()
+  print('with momentum time: ', (end-start))
   test_acc = test(model, X_test, y_test, config)
 
