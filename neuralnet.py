@@ -2,7 +2,7 @@ import numpy as np
 import pickle
 
 config = {}
-config['layer_specs'] = [784, 100, 100, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
+config['layer_specs'] = [784, 50, 50, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
 config['activation'] = 'sigmoid' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
 config['batch_size'] = 1000  # Number of training samples per batch to be passed to network
 config['epochs'] = 50  # Number of epochs to train the model
@@ -11,8 +11,8 @@ config['early_stop_epoch'] = 5  # Number of epochs for which validation loss inc
 config['L2_penalty'] = 0  # Regularization constant
 config['momentum'] = False  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
-# config['learning_rate'] = 0.0001 # Learning rate of gradient descent algorithm
-config['learning_rate'] = 0.000000001 # Learning rate of gradient descent algorithm
+config['learning_rate'] = 0.0001 # Learning rate of gradient descent algorithm
+# config['learning_rate'] = 0.000000001 # Learning rate of gradient descent algorithm
 
 
 def softmax(x):
@@ -29,7 +29,7 @@ def load_data(fname):
   Make sure to convert labels to one hot encoded format.
   """
   f = open(fname, 'rb')
-  data = pickle.load(f, encoding='bytes')
+  data = pickle.load(f, encoding='latin1')
   f.close() 
   X = []
   Y = []
@@ -148,8 +148,8 @@ class Layer():
     self.d_w = np.dot(np.transpose(self.x), delta)
     #gradient w.r.t x is curr_delta times w
     self.d_x = np.dot(delta, np.transpose(self.w))
-    #gradient w.r.t b is alpha times detla
-    self.d_b = delta
+    #gradient w.r.t b is alpha times delta
+    self.d_b = np.sum(delta, axis=0) #sum over deltas to get the right dimension
 
     return self.d_x
 
@@ -221,37 +221,37 @@ class Neuralnetwork():
       curr_delta = act_obj.backward_pass(d_x) #gives gradient multiplied with d_x
 
 
-    #learning rate
-    alpha = config['learning_rate']
-    #simultaneous update of weights and biases after training on all examples
-    for layer in self.layers:
-      if isinstance(layer, Layer):
-        layer.w = np.add(np.multiply(alpha, layer.d_w), layer.w)
-        # layer.w = np.add(layer.d_w, layer.w)
-        layer.b = np.add(layer.b,np.multiply(alpha,layer.d_b))
-
+def getOneHot(targets):
+  labels = np.zeros((len(targets), 10))
+  for i,t in enumerate(targets):
+    labels[i][int(t)] = 1
+  return labels
 
 def trainer(model, X_train, y_train, X_valid, y_valid, config):
   """
   Write the code to train the network. Use values from config to set parameters
   such as L2 penalty, number of epochs, momentum, etc.
   """
-  #assuming that the model is the neural network
+  #one hot encode the labels
+  y_train = getOneHot(y_train)
   batch_size = config['batch_size']
   train_size = len(X_train)
-  epoch_count = config['epoch']
+  epoch_count = config['epochs']
+  alpha = config['learning_rate']
 
-
-  loss = None
-  outputs = None
   #train over epochs
-  for epoch in epoch_count:
+  for i in range(epoch_count):
     #iterate through each batch size
-    for i in range(0, train_size, batch_size):
+    for j in range(0, train_size, batch_size):
       #forward pass
-      loss, outputs = model.forward_pass(X_train[i:batch_size], y_train[i:batch_size])
-      #back pass and update weights and biases
-      model.backward_pass() 
+      loss, outputs = model.forward_pass(X_train[j:batch_size], y_train[j:batch_size])
+      #back pass
+      model.backward_pass()
+      #simultaneous update of weights and biases after training on all examples
+      for k,layer in enumerate(model.layers):
+        if isinstance(layer, Layer):
+          model.layers[k].w = np.add(np.multiply(alpha, layer.d_w), layer.w)
+          layer.b = np.add(layer.b,np.multiply(alpha,layer.d_b))
 
   #since model is passed by reference, don't need to return
   return model #optional
@@ -267,7 +267,6 @@ def test(model, X_test, y_test, config):
   for y,p in zip(y_test,predictions):
     if y == p: count += 1
   accuracy = count / len(predictions)
-  #print('accuracy: ', accuracy)
   return accuracy
 
       
@@ -289,6 +288,7 @@ if __name__ == "__main__":
   ### Train the network ###
   model = Neuralnetwork(config)
   X_train, y_train = load_data(train_data_fname)
+
   X_valid, y_valid = load_data(valid_data_fname)
   X_test, y_test = load_data(test_data_fname)
   trainer(model, X_train, y_train, X_valid, y_valid, config)

@@ -54,21 +54,16 @@ def main():
     x_image = np.random.randn(1, 784)
 
     nnet = neuralnet.Neuralnetwork(config)
-    nnet.forward_pass(x_image, targets = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0]]))
+    nnet.forward_pass(x_image, targets = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
     nnet.backward_pass()
 
-    # nnet.y = benchmark_data['nnet'].y
     layer_no = 0
     for layer_idx, layer in enumerate(nnet.layers):
         if isinstance(layer, neuralnet.Layer):
             layer_no += 1
             error_x = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].x - layer.x))
             error_w = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].w - layer.w))
-            print(error_w)
-            # print('correct w: ', benchmark_data['nnet'].layers[layer_idx].w[-1])
-            # print('impressive w: ', layer.w[len(layer.w)-1])
             error_b = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].b - layer.b))
-            print(error_b)
             error_d_w = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].d_w - layer.d_w))
             error_d_b = np.sum(np.abs(benchmark_data['nnet'].layers[layer_idx].d_b - layer.d_b))
 
