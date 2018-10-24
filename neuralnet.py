@@ -155,7 +155,7 @@ class Layer():
     #gradient w.r.t w is curr_delta times input of current layer
     # print(self.x.shape)
     # print(delta.shape)
-    self.d_w = np.dot(np.transpose(self.x), delta)
+    self.d_w = np.dot(np.transpose(self.x), delta) + config["L2_penalty"] * self.w      #add the regularization term as well
     #gradient w.r.t x is curr_delta times w
     self.d_x = np.dot(delta, np.transpose(self.w))
     #gradient w.r.t b is alpha times delta
@@ -216,7 +216,13 @@ class Neuralnetwork():
     '''
     find cross entropy loss between logits and targets
     '''
-    return -np.sum(np.multiply(np.log(logits + 0.00001), targets))
+    r_term = 0
+    if config['L2_penalty'] != 0:
+      for l in self.layers:
+        if isinstance(l, Layer):
+          r_term += np.square(l.w).sum()
+      r_term = config['L2_penalty'] * r_term / 2.0
+    return -np.sum(np.multiply(np.log(logits + 0.00001), targets)) + r_term
 
 
   def backward_pass(self):
@@ -331,7 +337,7 @@ def trainer(model, X_train, y_train, X_valid, y_valid, X_test, y_test, config):
   train_acc_list = []
   test_acc_list = []
 
-  # experimentNumericalApproximation(model, X_train[:1], y_train[:1]) #numerical approximation
+  experimentNumericalApproximation(model, X_train[:1], y_train[:1]) #numerical approximation
   #train over epochs
   for i in range(epoch_count):
     print(i)
@@ -359,34 +365,35 @@ def trainer(model, X_train, y_train, X_valid, y_valid, X_test, y_test, config):
     if config['early_stop']:
       if v_loss <= min_loss:
         min_loss = v_loss
-        best_layers = model.layers
+        best_layers = model.layers[:]
         best_epoch = i
       else:
-        model.layers = best_layers
-    if config['early_stop']: all_loss.append(v_loss)
+        model.layers = best_layers[:]
+    if config['early_stop']:
+      all_loss.append(v_loss)
 
-    # train_acc = test(model, X_train, old_y_train,config)
-    # train_acc_list.append(train_acc)
-    #
-    # test_acc = test(model, X_test, old_y_test ,config)
-    #
-    # test_acc_list.append(test_acc)
+    # print('best epoch: ', best_epoch)
+    train_acc = test(model, X_train, old_y_train,config)
+    train_acc_list.append(train_acc)
+
+    test_acc = test(model, X_test, old_y_test ,config)
+    test_acc_list.append(test_acc)
 
 
-  # X = [i+1 for i in range(epoch_count)]
-  # train_acc_list = [100 * x for x in train_acc_list]
-  # test_acc_list = [100 * x for x in test_acc_list]
-  # plt.plot(X, train_acc_list, label='train_accuracy')
-  # plt.plot(X, test_acc_list, label='test_accuracy')
-  # plt.ylabel("% Accuracy")
+  X = [i+1 for i in range(epoch_count)]
+  train_acc_list = [100 * x for x in train_acc_list]
+  test_acc_list = [100 * x for x in test_acc_list]
+  plt.plot(X, train_acc_list, label='train_accuracy')
+  plt.plot(X, test_acc_list, label='test_accuracy')
+  plt.ylabel("% Accuracy")
 
   # print('best epoch: ',best_epoch)
   # plt.xlabel("Epoch")
   # plt.ylabel("Loss")
-  # plt.title("Loss vs. Epoch")
+  plt.title('Lambda = ' + str(config['L2_penalty']) + ' Accuracy vs. Epoch')
   # plt.plot(X, all_loss)
-  # plt.legend()
-  # plt.show()
+  plt.legend()
+  plt.show()
 
 
 def test(model, X_test, y_test, config):
@@ -417,30 +424,44 @@ def predict(probabilities):
 
 
 if __name__ == "__main__":
-  train_data_fname = 'MNIST_train.pkl'
-  valid_data_fname = 'MNIST_valid.pkl'
-  test_data_fname = 'MNIST_test.pkl'
+  train_data_fname = 'data/MNIST_train.pkl'
+  valid_data_fname = 'data/MNIST_valid.pkl'
+  test_data_fname = 'data/MNIST_test.pkl'
   
   # ### Train the network ###
-  # config['momentum'] = False
-  # model = Neuralnetwork(config)
+  config['momentum'] = True
+  model = Neuralnetwork(config)
   X_train, y_train = load_data(train_data_fname)
   #
   X_valid, y_valid = load_data(valid_data_fname)
   X_test, y_test = load_data(test_data_fname)
-  # start = time.time()
-  # trainer(model, X_train, y_train, X_valid, y_valid, X_test[:1000], y_test[:1000], config)
-  # end = time.time()
-  # print('without momentum time: ', (end-start))
-  # test_acc = test(model, X_test, y_test, config)
-  # train_acc = test(model, X_train, y_train, config)
+  start = time.time()
+  trainer(model, X_train, y_train, X_valid, y_valid, X_test[:1000], y_test[:1000], config)
+  end = time.time()
+  print('without momentum time: ', (end-start))
+  test_acc = test(model, X_test, y_test, config)
+  train_acc = test(model, X_train, y_train, config)
 
-  ### Train the network ###
-  config['momentum'] = True
+
+  # regularization
+  config['epochs'] = 48     # given our best epoch was found at 43, we use 10% more epoch for regularization
+
+  config['L2_penalty'] = 0.001
   model = Neuralnetwork(config)
   start = time.time()
   trainer(model, X_train, y_train, X_valid, y_valid, X_test, y_test, config)
   end = time.time()
   print('with momentum time: ', (end-start))
   test_acc = test(model, X_test, y_test, config)
-  print(test_acc)
+  print("accuracy using 0.001 penalty param ", test_acc)
+
+
+  config['L2_penalty'] = 0.0001
+  model = Neuralnetwork(config)
+  start = time.time()
+  trainer(model, X_train, y_train, X_valid, y_valid, X_test, y_test, config)
+  end = time.time()
+  print('with momentum time: ', (end-start))
+  test_acc = test(model, X_test, y_test, config)
+  print("accuracy using 0.0001 penalty param ", test_acc)
+
