@@ -1,6 +1,9 @@
 import numpy as np
 import pickle
 import time
+
+import matplotlib.pyplot as plt
+
 config = {}
 config['layer_specs'] = [784, 50, 50, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
 config['activation'] = 'sigmoid' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
@@ -11,7 +14,7 @@ config['early_stop_epoch'] = 5  # Number of epochs for which validation loss inc
 config['L2_penalty'] = 0  # Regularization constant
 config['momentum'] = True  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
-config['learning_rate'] = 0.0001 # Learning rate of gradient descent algorithm
+config['learning_rate'] = 0.001 # Learning rate of gradient descent algorithm #used for tanh and sigmoid
 # config['learning_rate'] = 0.000000001 # Learning rate of gradient descent algorithm
 
 
@@ -19,8 +22,9 @@ def softmax(x):
   """
   Write the code for softmax activation function that takes in a numpy array and returns a numpy array.
   """
-  total = np.sum(np.exp(x), axis=1)
-  return np.asarray([np.true_divide(np.exp(e), t) for e,t in zip(x,total)]) #TODO  vectorize this
+
+  total = np.sum(np.exp(x), axis=1).reshape((len(x), 1))
+  return np.true_divide(np.exp(x), total)
 
 
 def load_data(fname):
@@ -127,7 +131,7 @@ class Layer():
     self.d_x = None  # Save the gradient w.r.t x in this
     self.d_w = None  # Save the gradient w.r.t w in this
     self.d_b = None  # Save the gradient w.r.t b in this
-    self.w = np.random.randn(self.in_units, self.out_units)
+    self.w = np.random.randn(self.in_units, self.out_units) # initialize the weight
     self.b = np.zeros((1, self.out_units)).astype(np.float32)
     #below are used for momentum
     if config['momentum']:
@@ -149,11 +153,13 @@ class Layer():
     computes gradient for its weights and the delta to pass to its previous layers.
     """
     #gradient w.r.t w is curr_delta times input of current layer
+    # print(self.x.shape)
+    # print(delta.shape)
     self.d_w = np.dot(np.transpose(self.x), delta)
     #gradient w.r.t x is curr_delta times w
     self.d_x = np.dot(delta, np.transpose(self.w))
     #gradient w.r.t b is alpha times delta
-    self.d_b = np.sum(delta, axis=0) #sum over deltas to get the right dimension
+    self.d_b = np.mean(delta, axis=0)
     if config['momentum']:
       beta = config['momentum_gamma']
       one_minus_beta = np.subtract(1, beta)
@@ -212,7 +218,7 @@ class Neuralnetwork():
     '''
     # print('logits: ', logits.shape)
     # print('targets: ', targets.shape)
-    return np.sum(np.dot(np.log(logits), np.transpose(targets)))
+    return -np.sum(np.multiply(np.log(logits + 0.00001), targets))
 
 
   def backward_pass(self):
@@ -237,31 +243,113 @@ def getOneHot(targets):
     labels[i][int(t)] = 1
   return labels
 
-def trainer(model, X_train, y_train, X_valid, y_valid, config):
+
+
+
+def experimentNumericalWeightApproxHelper(model, X_train, y_train, i, j, k):
+
+  layer = model.layers[i]
+  e = 0.01
+  print("select w[" + str(j) + "][" + str(k) + "] from " + ("hidden" if i == -1 else str(i) )+ " layer")
+  layer.w[j][k] += e
+  loss_inc, outputs = model.forward_pass(X_train, y_train)
+  print("loss after increasing e: ", loss_inc)
+  layer.w[j][k] -= 2 * e
+  loss_dec, outputs = model.forward_pass(X_train, y_train)
+  print("loss after decreasing e: ", loss_dec)
+  approx = -(loss_inc - loss_dec) / (2 * e)
+  print("the approximation is ", approx)
+  model.backward_pass()
+  backprop_dw = layer.d_w[j][k]
+  print("dw from back prop is ", backprop_dw)
+  diff = abs(backprop_dw - approx) - abs(e * e)
+
+  if diff <= 0:
+    print("the approximation " + str(diff) + " are within o(e^2)")
+  else:
+    print("These approximation is not within o(e^2)")
+  print("------------------------------------------")
+
+
+def experimentNumericalBiasWeightApproxHelper(model, X_train, y_train, i):
+  layer = model.layers[i]
+
+  e = 0.01
+  print("select " + ("hidden " if i == -1 else "output ") + "bias w")
+  layer.b[0][0] += e
+  print(layer.b.shape)
+  loss_inc, outputs = model.forward_pass(X_train, y_train)
+  print("loss after increasing e: ", loss_inc)
+  layer.b[0][0] -= 2 * e
+  loss_dec, outputs = model.forward_pass(X_train, y_train)
+  print("loss after decreasing e: ", loss_dec)
+  approx = -(loss_inc - loss_dec) / (2 * e)
+  print("the approximation is ", approx)
+  model.backward_pass()
+  backprop_dw = layer.d_b[0]
+  print("d_b from back prop is ", backprop_dw)
+  diff = abs(backprop_dw - approx) - abs(e * e)
+
+  if diff <= 0:
+    print("the approximation " + str(diff) + " are within o(e^2)")
+  else:
+    print("These approximation is not within o(e^2)")
+  print("------------------------------------------")
+
+
+# For each selected weight w, first increment the weight by small value ε,
+# do a forward pass for one training example, and compute the loss. This value is E(w + ε)
+def experimentNumericalApproximation(model, X_train, y_train):
+  experimentNumericalWeightApproxHelper(model, X_train, y_train, -1, 1, 2)
+  experimentNumericalWeightApproxHelper(model, X_train, y_train, -1, 2, 3)
+
+  experimentNumericalWeightApproxHelper(model, X_train, y_train, 0, 1, 2)
+  experimentNumericalWeightApproxHelper(model, X_train, y_train, 0, 2, 3)
+
+  experimentNumericalBiasWeightApproxHelper(model, X_train, y_train, -1)
+  experimentNumericalBiasWeightApproxHelper(model, X_train, y_train, 0)
+
+
+def trainer(model, X_train, y_train, X_valid, y_valid, X_test, y_test, config):
   """
   Write the code to train the network. Use values from config to set parameters
   such as L2 penalty, number of epochs, momentum, etc.
   """
+  old_y_train = y_train[:]
+  old_y_test = y_test[:]
   #one hot encode the labels
   y_train = getOneHot(y_train)
+  y_valid = getOneHot(y_valid)
+  y_test = getOneHot(y_test)
+
+
   batch_size = config['batch_size']
   train_size = len(X_train)
   epoch_count = config['epochs']
   alpha = config['learning_rate']
 
+  min_loss = (1<<31) - 1
+  best_layers = None
+  all_loss = []
+  best_epoch = 0
 
+  train_acc_list = []
+  test_acc_list = []
+
+  # experimentNumericalApproximation(model, X_train[:1], y_train[:1]) #numerical approximation
   #train over epochs
   for i in range(epoch_count):
+    print(i)
     #iterate through each batch size
     for j in range(0, train_size, batch_size):
       #forward pass
       loss, outputs = model.forward_pass(X_train[j:j+batch_size], y_train[j:j+batch_size])
       #back pass
       model.backward_pass()
+
       #stochastic gradient descent: simultaneous update of weights and biases after training on all examples
       for layer in model.layers:
         if isinstance(layer, Layer):
-          #TODO update weights using momentum
           if config['momentum']:
             layer.w = np.add(layer.w, np.multiply(alpha, layer.v_dw))
             layer.b = np.add(layer.b, np.multiply(alpha, layer.v_db))
@@ -269,7 +357,37 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
             # without momentum
             layer.w = np.add(np.multiply(alpha, layer.d_w), layer.w)
             layer.b = np.add(layer.b,np.multiply(alpha,layer.d_b))
+      #cross_validation
+      if config['early_stop']:
+        v_loss, v_outputs =  model.forward_pass(X_valid[:1000], y_valid[:1000])
+    #cross-validation early-stopping, best weights are maintained by the model's layers
+    if config['early_stop']:
+      if v_loss <= min_loss:
+        min_loss = v_loss
+        best_layers = model.layers
+        best_epoch = i
+      else:
+        model.layers = best_layers
 
+    # train_acc = test(model, X_train, old_y_train,config)
+    # train_acc_list.append(train_acc)
+    # print('train accuracy: ', train_acc)
+    #
+    # test_acc = test(model, X_test, old_y_train,config)
+    # test_acc_list.append(test_acc)
+    # print('test accuracy: ', test_acc)
+
+    all_loss.append(v_loss)
+
+  # print('best epoch: ', best_epoch)
+  X = [i+1 for i in range(50)]
+  # plt.plot(X, train_acc_list, label='train_accuracy')
+  # plt.plot(X, test_acc_list, label='test_accuracy')
+  # plt.xlabel("Epoch")
+  # plt.ylabel("Accuracy")
+  print('best epoch: ' ,best_epoch)
+  plt.plot(X, all_loss)
+  plt.show()
 
 
 def test(model, X_test, y_test, config):
@@ -312,17 +430,19 @@ if __name__ == "__main__":
   X_valid, y_valid = load_data(valid_data_fname)
   X_test, y_test = load_data(test_data_fname)
   start = time.time()
-  trainer(model, X_train, y_train, X_valid, y_valid, config)
+  trainer(model, X_train, y_train, X_valid, y_valid, X_test[:1000], y_test[:1000], config)
   end = time.time()
   print('without momentum time: ', (end-start))
   test_acc = test(model, X_test, y_test, config)
+  train_acc = test(model, X_train, y_train, config)
+
+
 
   ### Train the network ###
   config['momentum'] = True
   model = Neuralnetwork(config)
   start = time.time()
-  trainer(model, X_train, y_train, X_valid, y_valid, config)
+  trainer(model, X_train, y_train, X_valid, y_valid, X_test[:1000], y_test[:1000], config)
   end = time.time()
   print('with momentum time: ', (end-start))
   test_acc = test(model, X_test, y_test, config)
-
