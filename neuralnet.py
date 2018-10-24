@@ -137,7 +137,8 @@ class Layer():
     self.d_w = None  # Save the gradient w.r.t w in this
     self.d_b = None  # Save the gradient w.r.t b in this
     self.w = np.random.randn(self.in_units, self.out_units)  # initialize the weight
-    self.w = np.multiply(self.w, 0.1)
+    if config['activation'] == 'ReLU':
+      self.w = np.multiply(self.w, 0.1)
     self.b = np.zeros((1, self.out_units)).astype(np.float32)
     # below are used for momentum
     if config['momentum']:
